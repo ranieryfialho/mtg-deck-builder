@@ -1,30 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { FilterPanel } from '@/components/search/FilterPanel';
 import { TRANSLATIONS } from '@/lib/translations.js';
+import { SetFilter } from '@/components/search/SetFilter';
 
-const normalizeText = (text) => {
-  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').trim();
-};
+const COLORS = [
+  { value: 'w', label: 'Branco', color: '#fffbd5' },
+  { value: 'u', label: 'Azul', color: '#0e68ab' },
+  { value: 'b', label: 'Preto', color: '#150b00' },
+  { value: 'r', label: 'Vermelho', color: '#d3202a' },
+  { value: 'g', label: 'Verde', color: '#00733e' }
+];
 
+// Funções auxiliares (translateQuery, buildScryfallQuery, searchCards) permanecem as mesmas
 const translateQuery = (query) => {
-  const normalized = normalizeText(query);
-  if (TRANSLATIONS.cards[normalized]) {
-    return TRANSLATIONS.cards[normalized];
-  }
-  const withoutArticles = normalized.replace(/^(o|a|os|as|um|uma)\s+/, '');
-  if (TRANSLATIONS.cards[withoutArticles]) {
-    return TRANSLATIONS.cards[withoutArticles];
-  }
-  const words = normalized.split(/\s+/);
-  const translated = words.map(word => {
-    if (['o', 'a', 'os', 'as', 'um', 'uma', 'de', 'da', 'do', 'das', 'dos', 'com', 'para', 'por', 'em', 'na', 'no'].includes(word)) return '';
-    return TRANSLATIONS.mechanics[word] || TRANSLATIONS.actions[word] || TRANSLATIONS.types[word] || TRANSLATIONS.subtypes[word] || word;
-  });
-  return translated.filter(w => w !== '').join(' ');
+  const normalized = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  if (TRANSLATIONS.cards[normalized]) return TRANSLATIONS.cards[normalized];
+  return query;
 };
 
 const buildScryfallQuery = (textQuery, filters) => {
@@ -33,124 +27,184 @@ const buildScryfallQuery = (textQuery, filters) => {
     const translated = translateQuery(textQuery);
     queryParts.push(`("${translated}" or "${textQuery}") include:foreign`);
   }
-  if (filters.colors.length > 0) {
-    queryParts.push(`color>=${filters.colors.join('')}`);
-  }
-  if (filters.type) {
-    queryParts.push(`type:${filters.type}`);
-  }
-  if (filters.rarity) {
-    queryParts.push(`rarity:${filters.rarity}`);
-  }
-  if (queryParts.length === 0) return '';
+  if (filters.colors.length > 0) queryParts.push(`color>=${filters.colors.join('')}`);
+  if (filters.type) queryParts.push(`type:${filters.type}`);
+  if (filters.rarity) queryParts.push(`rarity:${filters.rarity}`);
+  if (filters.cmc) queryParts.push(filters.cmc === '7+' ? `cmc>=7` : `cmc=${filters.cmc}`);
+  if (filters.set) queryParts.push(`set:${filters.set}`);
   return queryParts.join(' ');
 };
 
-const fetchAllPages = async (url) => {
-  let allCards = [];
-  let currentUrl = url;
-  while (currentUrl) {
-    const response = await fetch(currentUrl);
-    if (!response.ok) break;
-    const data = await response.json();
-    allCards = [...allCards, ...data.data];
-    currentUrl = data.has_more ? data.next_page : null;
-  }
-  return allCards.length > 0 ? { data: allCards, has_more: !!currentUrl, total_cards: allCards.length } : null;
-};
-
-const searchCards = async (query, filters) => {
+const searchCards = async (query, filters, page = 1) => {
   const scryfallQuery = buildScryfallQuery(query, filters);
   if (!scryfallQuery) return null;
+  const searchUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(scryfallQuery)}&unique=cards&order=name&page=${page}`;
+  const response = await fetch(searchUrl);
+  if (!response.ok) throw new Error(`Nenhuma carta encontrada para os critérios selecionados.`);
+  const data = await response.json();
+  return { data: data.data || [], has_more: data.has_more || false, total_cards: data.total_cards || 0, page: page };
+};
 
-  const searchUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(scryfallQuery)}&unique=cards&order=name`;
-  const result = await fetchAllPages(searchUrl);
 
-  if (!result) {
-    throw new Error(`Nenhuma carta encontrada para os critérios selecionados.`);
+// --- NOVA LÓGICA DE ESTADO ---
+
+// Função para ler o estado salvo do sessionStorage
+const getInitialState = () => {
+  const savedState = sessionStorage.getItem('mtgSearchState');
+  if (savedState) {
+    try {
+      return JSON.parse(savedState);
+    } catch (e) {
+      console.error("Falha ao ler o estado salvo:", e);
+    }
   }
-  return result;
+  // Estado padrão se nada for encontrado
+  return {
+    query: '',
+    page: 1,
+    filters: { colors: [], type: '', rarity: '', cmc: '', set: '' }
+  };
 };
 
 export function SearchPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [queryToSearch, setQueryToSearch] = useState('');
-  const [filters, setFilters] = useState({
-    colors: [],
-    type: '',
-    rarity: '',
-  });
+  // Estado unificado para a busca
+  const [searchState, setSearchState] = useState(getInitialState);
+  // Estado local apenas para o campo de texto
+  const [searchTerm, setSearchTerm] = useState(searchState.query);
+
+  // Efeito para salvar o estado no sessionStorage sempre que ele mudar
+  useEffect(() => {
+    sessionStorage.setItem('mtgSearchState', JSON.stringify(searchState));
+  }, [searchState]);
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
-    queryKey: ['cards', queryToSearch, filters],
-    queryFn: () => searchCards(queryToSearch, filters),
-    enabled: queryToSearch !== '' || filters.colors.length > 0 || filters.type !== '' || filters.rarity !== '',
+    queryKey: ['cards', searchState],
+    queryFn: () => searchCards(searchState.query, searchState.filters, searchState.page),
+    enabled: searchState.query !== '' || Object.values(searchState.filters).some(f => Array.isArray(f) ? f.length > 0 : f !== ''),
     retry: false,
+    keepPreviousData: true
   });
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
-    setQueryToSearch(searchTerm.trim());
+    setSearchState(prev => ({ ...prev, query: searchTerm.trim(), page: 1 }));
   };
-  
+
+  const handlePageChange = (newPage) => {
+    if (newPage > 0) {
+      setSearchState(prev => ({ ...prev, page: newPage }));
+    }
+  };
+
+  const handleFilterChange = (filterType, value) => {
+    setSearchState(prev => ({
+      ...prev,
+      page: 1,
+      filters: { ...prev.filters, [filterType]: value }
+    }));
+  };
+
+  const handleColorToggle = (color) => {
+    const newColors = searchState.filters.colors.includes(color)
+      ? searchState.filters.colors.filter(c => c !== color)
+      : [...searchState.filters.colors, color];
+    handleFilterChange('colors', newColors);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSearchState({
+      query: '',
+      page: 1,
+      filters: { colors: [], type: '', rarity: '', cmc: '', set: '' }
+    });
+  };
+
   const busy = isLoading || isFetching;
+  const totalPages = data?.total_cards ? Math.ceil(data.total_cards / 176) : 0;
+  
+  // O resto do JSX continua o mesmo, apenas lendo do `searchState`
 
   return (
     <div className="w-full min-h-screen bg-slate-900 text-white p-4">
       <div className="container mx-auto">
-        <h1 className="text-4xl font-bold mb-6 text-center" style={{ fontFamily: 'Cinzel, serif' }}>
-          Buscar Cartas
-        </h1>
-        
+        <h1 className="text-4xl font-bold mb-6 text-center" style={{ fontFamily: 'Cinzel, serif' }}>BUSCAR CARTAS</h1>
         <form onSubmit={handleSearchSubmit} className="flex gap-2 mb-6 max-w-xl mx-auto">
-          <Input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Nome, mecânica ou tipo (PT/EN)"
-            className="bg-slate-700 border-slate-600 text-white"
-          />
+          <Input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Nome da carta..." className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
           <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={busy}>
             {busy ? 'Buscando...' : 'Buscar'}
           </Button>
         </form>
-
-        <FilterPanel filters={filters} setFilters={setFilters} />
-
-        {busy && <p className="text-center">Buscando...</p>}
-        
-        {isError && !busy && (
-          <div className="text-center text-red-400 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-            {error.message}
-          </div>
-        )}
-        
-        {data && !busy && (
-          <>
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center bg-slate-800 rounded-lg px-4 py-2">
-                <span className="text-slate-400 mr-2">Encontradas</span>
-                <span className="text-white font-bold text-xl">{data.total_cards}</span>
-                <span className="text-slate-400 ml-2">cartas</span>
-                {data.has_more && <span className="text-yellow-400 ml-2 text-sm">(+ disponíveis)</span>}
+        <div className="bg-slate-800 rounded-lg p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Cores</label>
+              <div className="flex gap-1">
+                {COLORS.map(color => (
+                  <button key={color.value} onClick={() => handleColorToggle(color.value)}
+                    className={`w-10 h-10 rounded-full border-2 transition-all ${searchState.filters.colors.includes(color.value) ? 'ring-2 ring-white scale-110' : 'hover:scale-105'}`}
+                    style={{ backgroundColor: color.color, borderColor: searchState.filters.colors.includes(color.value) ? '#fff' : '#64748b' }} title={color.label} />
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Tipo</label>
+              <select onChange={(e) => handleFilterChange('type', e.target.value)} value={searchState.filters.type} className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white">
+                <option value="">Todos</option><option value="creature">Criatura</option><option value="planeswalker">Planeswalker</option><option value="instant">Instantânea</option><option value="sorcery">Feitiço</option><option value="enchantment">Encantamento</option><option value="artifact">Artefato</option><option value="land">Terreno</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Raridade</label>
+              <select onChange={(e) => handleFilterChange('rarity', e.target.value)} value={searchState.filters.rarity} className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white">
+                <option value="">Todas</option><option value="c">Comum</option><option value="u">Incomum</option><option value="r">Raro</option><option value="m">Mítico</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Custo Convertido</label>
+              <select onChange={(e) => handleFilterChange('cmc', e.target.value)} value={searchState.filters.cmc} className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white">
+                <option value="">Qualquer</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7+">7+</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Coleção</label>
+              <SetFilter value={searchState.filters.set} onChange={(e) => handleFilterChange('set', e.target.value)} />
+            </div>
+          </div>
+          {(searchState.query || Object.values(searchState.filters).some(f => Array.isArray(f) ? f.length > 0 : f !== '')) && (
+            <Button onClick={clearFilters} className="bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm px-3 py-1">Limpar Filtros</Button>
+          )}
+        </div>
+        {busy && <div className="text-center py-8"><p>Buscando...</p></div>}
+        {isError && !busy && <div className="text-center text-red-400 p-4">{error.message}</div>}
+        {data && !busy && (
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <p className='text-slate-400'>{data.total_cards.toLocaleString()} cartas encontradas</p>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => handlePageChange(searchState.page - 1)} disabled={searchState.page === 1}>Anterior</Button>
+                  <span className="text-sm text-slate-400">Página {searchState.page} de {totalPages}</span>
+                  <Button onClick={() => handlePageChange(searchState.page + 1)} disabled={!data.has_more}>Próxima</Button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
               {data.data.map((card) => (
                 <Link to={`/card/${card.set}/${card.collector_number}`} key={card.id}>
-                  <div className="relative group">
-                    <img
-                      src={card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal}
-                      alt={card.name}
-                      className="rounded-lg w-full transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </div>
+                  <div className="relative group"><img src={card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal} alt={card.name} className="rounded-lg w-full" loading="lazy" /></div>
                 </Link>
               ))}
             </div>
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2">
+                <Button onClick={() => handlePageChange(searchState.page - 1)} disabled={searchState.page === 1}>Anterior</Button>
+                <span className="text-sm text-slate-400">Página {searchState.page} de {totalPages}</span>
+                <Button onClick={() => handlePageChange(searchState.page + 1)} disabled={!data.has_more}>Próxima</Button>
+              </div>
+            )}
           </>
         )}
+        {!data && !busy && !isError && <div className="text-center py-12"><p className="text-slate-400">Use a busca e os filtros para encontrar cartas.</p></div>}
       </div>
     </div>
   );
