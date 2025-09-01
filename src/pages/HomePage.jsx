@@ -11,14 +11,12 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-4">
       <h1 className="text-3xl mb-4">Bem-vindo, Planeswalker!</h1>
-      <p className="mb-8">Seu email é: {user?.email}</p>
+      <p className="mb-8 text-slate-400">Seu email é: {user?.email}</p>
       
-      {/* ... seletor de idioma ... */}
-
-      {/* Links de navegação */}
-      <div className="flex gap-4">
+      {/* Container para os botões de navegação principais */}
+      <div className="flex flex-wrap justify-center gap-4">
         <Link to="/search">
           <Button className="bg-primary-500 hover:bg-primary-600">
             Buscar Cartas
@@ -28,6 +26,12 @@ export function HomePage() {
         <Link to="/collection">
           <Button className="bg-secondary-500 hover:bg-secondary-600">
             Minha Coleção
+          </Button>
+        </Link>
+
+        <Link to="/decks">
+          <Button className="bg-accent-purple hover:bg-purple-700">
+            Meus Decks
           </Button>
         </Link>
       </div>
