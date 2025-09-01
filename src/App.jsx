@@ -2,6 +2,7 @@ import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { CollectionPage } from './pages/CollectionPage';
 
 import { AuthPage } from './pages/Auth';
 import { HomePage } from './pages/HomePage';
@@ -27,6 +28,7 @@ function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/card/:set/:number" element={<CardDetailPage />} />
+      <Route path="/collection" element={<CollectionPage />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

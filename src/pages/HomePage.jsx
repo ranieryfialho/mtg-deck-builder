@@ -14,14 +14,25 @@ export function HomePage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
       <h1 className="text-3xl mb-4">Bem-vindo, Planeswalker!</h1>
       <p className="mb-8">Seu email é: {user?.email}</p>
+      
+      {/* ... seletor de idioma ... */}
 
-      <Link to="/search">
-        <Button className="mb-4 bg-primary-500 hover:bg-primary-600">
-          Buscar Cartas
-        </Button>
-      </Link>
+      {/* Links de navegação */}
+      <div className="flex gap-4">
+        <Link to="/search">
+          <Button className="bg-primary-500 hover:bg-primary-600">
+            Buscar Cartas
+          </Button>
+        </Link>
+        
+        <Link to="/collection">
+          <Button className="bg-secondary-500 hover:bg-secondary-600">
+            Minha Coleção
+          </Button>
+        </Link>
+      </div>
 
-      <Button onClick={handleLogout} variant="destructive">
+      <Button onClick={handleLogout} variant="destructive" className="mt-8">
         Sair (Logout)
       </Button>
     </div>
