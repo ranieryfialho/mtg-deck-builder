@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ManaCurveChart } from "@/components/deck/ManaCurveChart";
 
 // --- FUNÇÕES DE API ---
@@ -54,6 +56,7 @@ export function DeckBuilderPage() {
   const { deckId } = useParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [collectionSearchTerm, setCollectionSearchTerm] = useState("");
 
   const { data: deck, isLoading: isLoadingDeck } = useQuery({
     queryKey: ["deck", deckId, user?.id],
@@ -120,6 +123,10 @@ export function DeckBuilderPage() {
   const totalDeckCards =
     deckCards?.reduce((sum, card) => sum + card.quantity, 0) || 0;
 
+  const filteredCollection = collection?.filter((card) =>
+    card.card_name.toLowerCase().includes(collectionSearchTerm.toLowerCase())
+  );
+
   if (isLoading) {
     return (
       <div className="w-full min-h-screen bg-slate-900 text-white flex items-center justify-center">
@@ -157,8 +164,17 @@ export function DeckBuilderPage() {
             >
               Sua Coleção
             </h2>
+            <div className="mb-4">
+              <Input
+                type="text"
+                placeholder="Buscar na coleção..."
+                value={collectionSearchTerm}
+                onChange={(e) => setCollectionSearchTerm(e.target.value)}
+                className="bg-slate-700 border-slate-600"
+              />
+            </div>
             <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
-              {collection?.map((cardInCollection) => {
+              {filteredCollection?.map((cardInCollection) => {
                 const quantityInDeck =
                   deckCards?.find(
                     (dc) => dc.card_id === cardInCollection.card_id
