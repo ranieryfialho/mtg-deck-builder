@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -21,12 +21,7 @@ const getCardBySetAndNumber = async (set, number, lang) => {
 
 const fetchCardInCollection = async (cardId, userId) => {
     if (!userId || !cardId) return null;
-    const { data, error } = await supabase
-        .from('user_cards')
-        .select('quantity')
-        .eq('user_id', userId)
-        .eq('card_id', cardId)
-        .single();
+    const { data, error } = await supabase.from('user_cards').select('quantity').eq('user_id', userId).eq('card_id', cardId).single();
     if (error && error.code !== 'PGRST116') throw new Error(error.message);
     return data;
 };
@@ -60,32 +55,22 @@ export function CardDetailPage() {
   });
   
   useEffect(() => {
-    if (cardInCollection) {
-      setQuantity(cardInCollection.quantity);
-    } else {
-      setQuantity(0);
-    }
+    if (cardInCollection) { setQuantity(cardInCollection.quantity); } 
+    else { setQuantity(0); }
   }, [cardInCollection]);
 
   const upsertCardMutation = useMutation({
     mutationFn: async (newQuantity) => {
       const quantityNum = parseInt(newQuantity, 10);
-      
       if (isNaN(quantityNum) || quantityNum < 0) return;
       if (quantityNum === 0) {
-        const { error } = await supabase.from('user_cards').delete()
-          .eq('user_id', user.id)
-          .eq('card_id', card.id);
+        const { error } = await supabase.from('user_cards').delete().eq('user_id', user.id).eq('card_id', card.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('user_cards').upsert({
-          user_id: user.id,
-          card_id: card.id,
-          quantity: quantityNum,
-          card_name: card.name,
+          user_id: user.id, card_id: card.id, quantity: quantityNum, card_name: card.name,
           card_image_url: card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal,
-          set_code: card.set,
-          collector_number: card.collector_number
+          set_code: card.set, collector_number: card.collector_number
         }, { onConflict: 'user_id, card_id' });
         if (error) throw error;
       }
@@ -108,53 +93,56 @@ export function CardDetailPage() {
     upsertCardMutation.mutate(quantity);
   };
   
-  if (isLoadingCard) {
-    return <div className="w-full min-h-screen bg-slate-900 text-white flex items-center justify-center">Carregando...</div>;
-  }
-  
-  if (!card) {
-    return <div className="w-full min-h-screen bg-slate-900 text-white flex items-center justify-center">Carta não encontrada.</div>;
-  }
+  if (isLoadingCard) { return <div className="w-full min-h-screen bg-primary-900 text-white flex items-center justify-center">Carregando...</div>; }
+  if (!card) { return <div className="w-full min-h-screen bg-primary-900 text-white flex items-center justify-center">Carta não encontrada.</div>; }
 
   return (
-    <div className="bg-slate-900 min-h-screen text-white p-4 sm:p-8">
+    <div className="bg-primary-900 min-h-screen text-white p-4 sm:p-8">
       <div className="container mx-auto">
-        <button onClick={() => navigate(-1)} className="text-primary-400 hover:text-primary-300 mb-8 inline-block">&larr; Voltar</button>
+        <button onClick={() => navigate(-1)} className="text-secondary-400 hover:text-secondary-300 mb-8 inline-block">&larr; Voltar</button>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-1">
             <img src={card.image_uris?.large || card.card_faces?.[0].image_uris?.large} alt={card.name} className="rounded-xl w-full" />
           </div>
-          <div className="md:col-span-2 space-y-4">
-            <h1 className="text-4xl font-bold" style={{ fontFamily: 'Cinzel, serif' }}>{card.printed_name || card.name}</h1>
-            <div className="flex flex-wrap gap-1 border-b border-t border-slate-700 py-2">
+          <div className="md:col-span-2 space-y-6 bg-primary-800/50 p-6 rounded-lg border border-primary-700">
+            <h1 className="text-4xl font-bold text-secondary-300" style={{ fontFamily: 'Cinzel, serif' }}>{card.printed_name || card.name}</h1>
+            
+            <div className="flex flex-wrap gap-1 border-b border-t border-primary-700 py-2">
               {supportedLanguages.map((lang) => (
-                <Button key={lang.code} onClick={() => changeLanguage(lang.code)} variant={language === lang.code ? 'secondary' : 'ghost'} size="sm" className="text-xs">{lang.label}</Button>
+                <Button key={lang.code} onClick={() => changeLanguage(lang.code)} 
+                  variant={language === lang.code ? 'secondary' : 'ghost'} 
+                  size="sm" className="text-xs"
+                >
+                  {lang.label}
+                </Button>
               ))}
             </div>
-            <p className="text-xl text-slate-300">{card.mana_cost}</p>
-            <hr className="border-slate-600" />
-            <p className="font-semibold text-lg">{card.printed_type_line || card.type_line}</p>
+            
+            <div>
+                <p className="text-xl text-slate-300">{card.printed_type_line || card.type_line}</p>
+                <p className="font-semibold text-lg">{card.mana_cost}</p>
+            </div>
+            
             <div className="text-slate-200 text-base leading-relaxed whitespace-pre-wrap">{card.printed_text || card.oracle_text}</div>
-            {card.flavor_text && (<div className="text-slate-400 italic border-l-2 border-slate-600 pl-4">{card.flavor_text}</div>)}
+            
+            {card.flavor_text && (<div className="text-slate-400 italic border-l-2 border-primary-600 pl-4">{card.flavor_text}</div>)}
+            
             <div className="flex items-center space-x-4 text-lg">
               {card.power && card.toughness && (<p className="font-bold text-2xl">{card.power}/{card.toughness}</p>)}
               {card.prices?.usd && (<p className="text-green-400">USD: ${card.prices.usd}</p>)}
             </div>
 
-            <div className="pt-4 border-t border-slate-700">
+            <div className="pt-4 border-t border-primary-700">
                 <Label className="text-lg font-semibold text-slate-300">Na sua Coleção</Label>
                 <div className="flex items-center gap-2 mt-2">
                     <Input
-                        type="number"
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        className="bg-slate-700 border-slate-600 w-24"
-                        min="0"
+                        type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+                        className="bg-primary-700 border-primary-600 w-24" min="0"
                     />
                     <Button 
                         onClick={handleUpdateCollection} 
                         disabled={upsertCardMutation.isLoading || updateStatus === 'loading'}
-                        className={updateStatus === 'success' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}
+                        className={updateStatus === 'success' ? 'bg-accent-emerald' : 'bg-secondary-500 hover:bg-secondary-600 text-secondary-foreground'}
                     >
                         {updateStatus === 'loading' ? 'Salvando...' : (updateStatus === 'success' ? 'Salvo!' : 'Atualizar Coleção')}
                     </Button>

@@ -11,11 +11,10 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-4">
-      <h1 className="text-3xl mb-4">Bem-vindo, Planeswalker!</h1>
-      <p className="mb-8 text-slate-400">Seu email é: {user?.email}</p>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-primary-900 text-white p-4">
+      <h1 className="text-5xl font-bold mb-4 text-secondary-400" style={{ fontFamily: 'Cinzel, serif' }}>Bem-vindo, Planeswalker!</h1>
+      <p className="mb-8 text-slate-300">Seu grimório o aguarda: {user?.email}</p>
       
-      {/* Container para os botões de navegação principais */}
       <div className="flex flex-wrap justify-center gap-4">
         <Link to="/search">
           <Button className="bg-primary-500 hover:bg-primary-600">
@@ -24,13 +23,13 @@ export function HomePage() {
         </Link>
         
         <Link to="/collection">
-          <Button className="bg-secondary-500 hover:bg-secondary-600">
+          <Button className="bg-secondary-500 hover:bg-secondary-600 text-secondary-foreground">
             Minha Coleção
           </Button>
         </Link>
 
         <Link to="/decks">
-          <Button className="bg-accent-purple hover:bg-purple-700">
+          <Button className="bg-accent-purple hover:bg-accent-purple/90">
             Meus Decks
           </Button>
         </Link>

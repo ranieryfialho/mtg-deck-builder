@@ -5,11 +5,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const fetchCollection = async (userId) => {
-  const { data, error } = await supabase
-    .from('user_cards')
-    .select('*')
-    .eq('user_id', userId)
-    .order('card_name', { ascending: true });
+  const { data, error } = await supabase.from('user_cards').select('*').eq('user_id', userId).order('card_name', { ascending: true });
   if (error) throw new Error(error.message);
   return data;
 };
@@ -25,25 +21,15 @@ export function CollectionPage() {
   });
 
   const updateQuantityMutation = useMutation({
-    mutationFn: ({ cardId, newQuantity }) => 
-      supabase.rpc('update_card_quantity', { card_id_to_update: cardId, new_quantity: newQuantity }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collection', user?.id] });
-    },
-    onError: (error) => {
-      console.error("Erro ao atualizar a quantidade:", error.message);
-    }
+    mutationFn: ({ cardId, newQuantity }) => supabase.rpc('update_card_quantity', { card_id_to_update: cardId, new_quantity: newQuantity }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['collection', user?.id] }); },
+    onError: (error) => { console.error("Erro ao atualizar a quantidade:", error.message); }
   });
 
   const deleteCardMutation = useMutation({
-    mutationFn: (cardId) => 
-      supabase.from('user_cards').delete().eq('id', cardId).eq('user_id', user.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collection', user?.id] });
-    },
-    onError: (error) => {
-        console.error("Erro ao remover a carta:", error.message);
-    }
+    mutationFn: (cardId) => supabase.from('user_cards').delete().eq('id', cardId).eq('user_id', user.id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['collection', user?.id] }); },
+    onError: (error) => { console.error("Erro ao remover a carta:", error.message); }
   });
 
   const handleQuantityChange = (card, change) => {
@@ -60,54 +46,48 @@ export function CollectionPage() {
       deleteCardMutation.mutate(cardId);
     }
   };
-  
-  if (isLoading) {
-    return <div className="text-center text-white p-10 min-h-screen bg-slate-900">Carregando sua coleção...</div>;
-  }
-  
-  if (isError) {
-    return <div className="text-center text-red-500 p-10 min-h-screen bg-slate-900">{error.message}</div>;
-  }
+
+  if (isLoading) { return <div className="text-center text-white p-10 min-h-screen bg-primary-900">Carregando sua coleção...</div>; }
+  if (isError) { return <div className="text-center text-red-500 p-10 min-h-screen bg-primary-900">{error.message}</div>; }
 
   return (
-    <div className="w-full min-h-screen bg-slate-900 text-white p-4">
+    <div className="w-full min-h-screen bg-primary-900 text-white p-4">
       <div className="container mx-auto">
-        <h1 className="text-4xl font-bold mb-6 text-center" style={{ fontFamily: 'Cinzel, serif' }}>
+        <h1 className="text-5xl font-bold mb-8 text-center text-secondary-400" style={{ fontFamily: 'Cinzel, serif' }}>
           Minha Coleção
         </h1>
 
         {collection && collection.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {collection.map((card) => (
-              <div key={card.id} className="bg-slate-800 rounded-lg shadow-lg flex flex-col overflow-hidden">
-                <Link to={`/card/${card.set_code}/${card.collector_number}`}>
+              <div key={card.id} className="bg-primary-800/50 border border-primary-700 rounded-lg shadow-lg flex flex-col overflow-hidden group">
+                <Link to={`/card/${card.set_code}/${card.collector_number}`} className="overflow-hidden">
                   <img
-                    src={card.card_image_url}
-                    alt={card.card_name}
-                    className="w-full object-contain transition-transform duration-300 hover:scale-105"
+                    src={card.card_image_url} alt={card.card_name}
+                    className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
                   />
                 </Link>
                 <div className="p-4 flex-grow flex flex-col justify-between">
-                    <h2 className="font-bold text-slate-200 truncate mb-4 h-6">{card.card_name}</h2>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Button size="sm" variant="ghost" 
-                                onClick={() => handleQuantityChange(card, -1)}
-                                disabled={updateQuantityMutation.isLoading || deleteCardMutation.isLoading}
-                                className="bg-slate-700 w-8 h-8 rounded-full hover:bg-slate-600">-</Button>
-                            <span className="text-lg font-semibold w-8 text-center text-primary-300">{card.quantity}</span>
-                             <Button size="sm" variant="ghost" 
-                                onClick={() => handleQuantityChange(card, 1)}
-                                disabled={updateQuantityMutation.isLoading || deleteCardMutation.isLoading}
-                                className="bg-slate-700 w-8 h-8 rounded-full hover:bg-slate-600">+</Button>
-                        </div>
-                        <Button size="sm" variant="destructive" 
-                            onClick={() => handleDeleteCard(card.id)}
-                            disabled={deleteCardMutation.isLoading || updateQuantityMutation.isLoading}>
-                            Remover
-                        </Button>
+                  <h2 className="font-bold text-slate-200 truncate mb-4 h-6">{card.card_name}</h2>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="ghost"
+                        onClick={() => handleQuantityChange(card, -1)}
+                        disabled={updateQuantityMutation.isLoading || deleteCardMutation.isLoading}
+                        className="bg-primary-700 w-8 h-8 rounded-full hover:bg-primary-600">-</Button>
+                      <span className="text-lg font-semibold w-8 text-center text-secondary-400">{card.quantity}</span>
+                      <Button size="sm" variant="ghost"
+                        onClick={() => handleQuantityChange(card, 1)}
+                        disabled={updateQuantityMutation.isLoading || deleteCardMutation.isLoading}
+                        className="bg-primary-700 w-8 h-8 rounded-full hover:bg-primary-600">+</Button>
                     </div>
+                    <Button size="sm" variant="destructive"
+                      onClick={() => handleDeleteCard(card.id)}
+                      disabled={deleteCardMutation.isLoading || updateQuantityMutation.isLoading}>
+                      Remover
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -117,9 +97,9 @@ export function CollectionPage() {
             <p className="text-slate-400 text-lg">Sua coleção está vazia.</p>
             <p className="text-slate-500 mt-2">Use a busca para encontrar e adicionar suas cartas!</p>
             <Link to="/search">
-                <Button className="mt-4 bg-primary-500 hover:bg-primary-600">
-                    Buscar Cartas
-                </Button>
+              <Button className="mt-4 bg-secondary-500 hover:bg-secondary-600 text-secondary-foreground">
+                Buscar Cartas
+              </Button>
             </Link>
           </div>
         )}
