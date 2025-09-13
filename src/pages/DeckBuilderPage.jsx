@@ -6,8 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ManaCurveChart } from "@/components/deck/ManaCurveChart";
+import { CardTypeChart } from "@/components/deck/CardTypeChart";
 
-// --- FUNÇÕES DE API ---
 const fetchDeckDetails = async (deckId, userId) => {
   const { data, error } = await supabase
     .from("decks")
@@ -18,7 +18,6 @@ const fetchDeckDetails = async (deckId, userId) => {
   if (error) throw new Error(error.message);
   return data;
 };
-
 const fetchDeckCards = async (deckId) => {
   const { data, error } = await supabase
     .from("deck_cards")
@@ -27,7 +26,6 @@ const fetchDeckCards = async (deckId) => {
   if (error) throw new Error(error.message);
   return data;
 };
-
 const fetchCollection = async (userId) => {
   const { data, error } = await supabase
     .from("user_cards")
@@ -37,7 +35,6 @@ const fetchCollection = async (userId) => {
   if (error) throw new Error(error.message);
   return data;
 };
-
 const fetchCardDetailsFromScryfall = async (cardsInDeck) => {
   if (!cardsInDeck || cardsInDeck.length === 0) return [];
   const identifiers = cardsInDeck.map((card) => ({ id: card.card_id }));
@@ -52,7 +49,6 @@ const fetchCardDetailsFromScryfall = async (cardsInDeck) => {
   return data.data;
 };
 
-// --- COMPONENTE DE LISTA DE CARTAS REUTILIZÁVEL ---
 const DeckCardList = ({
   title,
   cards,
@@ -76,11 +72,9 @@ const DeckCardList = ({
             (c) => c.card_id === cardInDeck.card_id
           );
           const maxQuantity = cardInCollection?.quantity || 0;
-
           const totalInDeck = (allDeckCards || [])
             .filter((c) => c.card_id === cardInDeck.card_id)
             .reduce((sum, c) => sum + c.quantity, 0);
-
           const isIncrementDisabled =
             totalInDeck >= maxQuantity || mutationLoading;
           const imageUrl = cardDetails?.image_uris?.small || null;
@@ -146,32 +140,27 @@ export function DeckBuilderPage() {
   const [collectionSearchTerm, setCollectionSearchTerm] = useState("");
   const [exportStatus, setExportStatus] = useState("idle");
   const deckCardsQueryKey = ["deck_cards", deckId];
-
   const { data: deck, isLoading: isLoadingDeck } = useQuery({
     queryKey: ["deck", deckId, user?.id],
     queryFn: () => fetchDeckDetails(deckId, user.id),
     enabled: !!user,
   });
-
   const { data: deckCards, isLoading: isLoadingDeckCards } = useQuery({
     queryKey: deckCardsQueryKey,
     queryFn: () => fetchDeckCards(deckId),
     enabled: !!deckId,
   });
-
   const { data: collection, isLoading: isLoadingCollection } = useQuery({
     queryKey: ["collection", user?.id],
     queryFn: () => fetchCollection(user.id),
     enabled: !!user,
   });
-
   const { data: fullCardDetails, isLoading: isLoadingFullDetails } = useQuery({
     queryKey: ["full_card_details", deckId, deckCards],
     queryFn: () => fetchCardDetailsFromScryfall(deckCards),
     enabled: !!deckCards && deckCards.length > 0,
     keepPreviousData: true,
   });
-
   const updateDeckCardMutation = useMutation({
     mutationFn: async ({ card, newQuantity, board }) => {
       if (newQuantity <= 0) {
@@ -209,13 +198,11 @@ export function DeckBuilderPage() {
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: deckCardsQueryKey });
       const previousDeckCards = queryClient.getQueryData(deckCardsQueryKey);
-
       queryClient.setQueryData(deckCardsQueryKey, (old = []) => {
         const { card, newQuantity, board } = variables;
         const existingCard = old.find(
           (c) => c.card_id === card.card_id && c.board === board
         );
-
         if (newQuantity <= 0) {
           return old.filter((c) => c.id !== card.id);
         }
@@ -229,7 +216,6 @@ export function DeckBuilderPage() {
           { ...card, quantity: 1, board: board, id: `temp-${Math.random()}` },
         ];
       });
-
       return { previousDeckCards };
     },
     onError: (err, variables, context) => {
@@ -239,10 +225,8 @@ export function DeckBuilderPage() {
       queryClient.invalidateQueries({ queryKey: deckCardsQueryKey });
     },
   });
-
   const handleUpdateCardInDeck = (card, quantityChange) => {
     const newQuantity = card.quantity + quantityChange;
-
     if (quantityChange > 0) {
       const cardInCollection = collection.find(
         (c) => c.card_id === card.card_id
@@ -251,7 +235,6 @@ export function DeckBuilderPage() {
       const totalInDeck = (deckCards || [])
         .filter((c) => c.card_id === card.card_id)
         .reduce((sum, c) => sum + c.quantity, 0);
-
       if (totalInDeck >= maxQuantity) {
         console.warn(
           "Não é possível adicionar mais cópias do que o disponível na coleção."
@@ -259,22 +242,18 @@ export function DeckBuilderPage() {
         return;
       }
     }
-
     updateDeckCardMutation.mutate({ card, newQuantity, board: card.board });
   };
-
   const handleAddCardToDeck = (cardInCollection, board) => {
     const totalInDeck = (deckCards || [])
       .filter((c) => c.card_id === cardInCollection.card_id)
       .reduce((sum, c) => sum + c.quantity, 0);
-
     if (totalInDeck >= cardInCollection.quantity) {
       console.warn(
         "Tentativa de adicionar mais cartas do que o disponível na coleção."
       );
       return;
     }
-
     const existingCard = deckCards?.find(
       (c) => c.card_id === cardInCollection.card_id && c.board === board
     );
@@ -288,16 +267,13 @@ export function DeckBuilderPage() {
       updateDeckCardMutation.mutate({ card: cardToAdd, newQuantity: 1, board });
     }
   };
-
   const { mainboardCards, sideboardCards } = useMemo(() => {
     const mainboard = deckCards?.filter((c) => c.board === "mainboard") || [];
     const sideboard = deckCards?.filter((c) => c.board === "sideboard") || [];
     return { mainboardCards: mainboard, sideboardCards: sideboard };
   }, [deckCards]);
-
   const handleExport = () => {
     if (!deckCards || !fullCardDetails || deckCards.length === 0) return;
-
     const formatCardList = (list) =>
       list
         .map((cardInDeck) => {
@@ -311,22 +287,17 @@ export function DeckBuilderPage() {
         })
         .filter(Boolean)
         .join("\n");
-
     let deckListText = "Deck\n" + formatCardList(mainboardCards);
-
     if (sideboardCards.length > 0) {
       deckListText += "\n\nSideboard\n" + formatCardList(sideboardCards);
     }
-
     navigator.clipboard.writeText(deckListText).then(() => {
       setExportStatus("copied");
       setTimeout(() => setExportStatus("idle"), 2000);
     });
   };
-
   const isInitialLoading =
     isLoadingDeck || isLoadingDeckCards || isLoadingCollection;
-
   const totalMainboardCards = mainboardCards.reduce(
     (sum, card) => sum + card.quantity,
     0
@@ -335,11 +306,9 @@ export function DeckBuilderPage() {
     (sum, card) => sum + card.quantity,
     0
   );
-
   const filteredCollection = collection?.filter((card) =>
     card.card_name.toLowerCase().includes(collectionSearchTerm.toLowerCase())
   );
-
   if (isInitialLoading) {
     return (
       <div className="w-full min-h-screen bg-slate-900 text-white flex items-center justify-center">
@@ -347,7 +316,6 @@ export function DeckBuilderPage() {
       </div>
     );
   }
-
   if (!deck) {
     return (
       <div className="w-full min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
@@ -466,15 +434,28 @@ export function DeckBuilderPage() {
                 ({totalMainboardCards} / {totalSideboardCards})
               </span>
             </h1>
-            <div className="mb-4 py-4">
-              <h3 className="text-lg font-semibold text-center mb-2 text-slate-300">
-                Curva de Mana (Deck Principal)
-              </h3>
-              <ManaCurveChart
-                deckCards={mainboardCards}
-                fullCardDetails={fullCardDetails}
-              />
+
+            <div className="grid md:grid-cols-2 gap-x-8 gap-y-4 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-center mb-2 text-slate-300">
+                  Curva de Mana
+                </h3>
+                <ManaCurveChart
+                  deckCards={mainboardCards}
+                  fullCardDetails={fullCardDetails}
+                />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-center mb-2 text-slate-300">
+                  Tipos de Carta
+                </h3>
+                <CardTypeChart
+                  deckCards={mainboardCards}
+                  fullCardDetails={fullCardDetails}
+                />
+              </div>
             </div>
+
             <div className="space-y-6">
               <DeckCardList
                 title="Deck Principal"
