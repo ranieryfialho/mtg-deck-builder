@@ -2,9 +2,7 @@ import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
-
 import { MainLayout } from './components/layout/MainLayout';
-
 import { AuthPage } from './pages/Auth';
 import { HomePage } from './pages/HomePage';
 import { SearchPage } from './pages/SearchPage';
@@ -13,6 +11,7 @@ import { CollectionPage } from './pages/CollectionPage';
 import { DecksListPage } from './pages/DecksListPage';
 import { DeckBuilderPage } from './pages/DeckBuilderPage';
 import { PublicDeckPage } from './pages/PublicDeckPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 const queryClient = new QueryClient();
 
@@ -50,6 +49,7 @@ function App() {
                 <Route path="/decks" element={<DecksListPage />} />
                 <Route path="/decks/:deckId" element={<DeckBuilderPage />} />
                 <Route path="/card/:set/:number" element={<CardDetailPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

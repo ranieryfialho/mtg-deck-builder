@@ -11,7 +11,6 @@ export function HomePage() {
       <p className="mt-4 text-xl text-slate-300">
         Use o menu à esquerda para navegar pela sua coleção, buscar novas cartas ou construir seus decks.
       </p>
-      <p className="mt-8 text-slate-400">Logado como: {user?.email}</p>
     </div>
   );
 }
