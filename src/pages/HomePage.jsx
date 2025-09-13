@@ -1,43 +1,17 @@
-import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
-import { Button } from '@/components/ui/button';
 
 export function HomePage() {
   const { user } = useAuth();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-primary-900 text-white p-4">
-      <h1 className="text-5xl font-bold mb-4 text-secondary-400" style={{ fontFamily: 'Cinzel, serif' }}>Bem-vindo, Planeswalker!</h1>
-      <p className="mb-8 text-slate-300">Seu grimório o aguarda: {user?.email}</p>
-      
-      <div className="flex flex-wrap justify-center gap-4">
-        <Link to="/search">
-          <Button className="bg-primary-500 hover:bg-primary-600">
-            Buscar Cartas
-          </Button>
-        </Link>
-        
-        <Link to="/collection">
-          <Button className="bg-secondary-500 hover:bg-secondary-600 text-secondary-foreground">
-            Minha Coleção
-          </Button>
-        </Link>
-
-        <Link to="/decks">
-          <Button className="bg-accent-purple hover:bg-accent-purple/90">
-            Meus Decks
-          </Button>
-        </Link>
-      </div>
-
-      <Button onClick={handleLogout} variant="destructive" className="mt-8">
-        Sair (Logout)
-      </Button>
+    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+      <h1 className="text-6xl font-bold text-secondary-400" style={{ fontFamily: 'Cinzel, serif' }}>
+        Bem-vindo ao seu Grimório
+      </h1>
+      <p className="mt-4 text-xl text-slate-300">
+        Use o menu à esquerda para navegar pela sua coleção, buscar novas cartas ou construir seus decks.
+      </p>
+      <p className="mt-8 text-slate-400">Logado como: {user?.email}</p>
     </div>
   );
 }

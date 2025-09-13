@@ -2,6 +2,9 @@ import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+
+import { MainLayout } from './components/layout/MainLayout';
+
 import { AuthPage } from './pages/Auth';
 import { HomePage } from './pages/HomePage';
 import { SearchPage } from './pages/SearchPage';
@@ -13,26 +16,14 @@ import { PublicDeckPage } from './pages/PublicDeckPage';
 
 const queryClient = new QueryClient();
 
-// Componente de layout para rotas protegidas
-const ProtectedRoutes = () => {
+const ProtectedLayout = () => {
   const { session } = useAuth();
   if (!session) {
     return <Navigate to="/auth" replace />;
   }
-  return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/search" element={<SearchPage />} />
-      <Route path="/card/:set/:number" element={<CardDetailPage />} />
-      <Route path="/collection" element={<CollectionPage />} />
-      <Route path="/decks" element={<DecksListPage />} />
-      <Route path="/decks/:deckId" element={<DeckBuilderPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+  return <MainLayout />;
 };
 
-// Componente para gerenciar a lógica de autenticação
 const AuthRoutes = () => {
     const { session } = useAuth();
     if (session) {
@@ -48,9 +39,19 @@ function App() {
         <AuthProvider>
           <BrowserRouter>
             <Routes>
+
               <Route path="/public/decks/:deckId" element={<PublicDeckPage />} />
               <Route path="/auth" element={<AuthRoutes />} />
-              <Route path="/*" element={<ProtectedRoutes />} />
+
+              <Route element={<ProtectedLayout />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/collection" element={<CollectionPage />} />
+                <Route path="/decks" element={<DecksListPage />} />
+                <Route path="/decks/:deckId" element={<DeckBuilderPage />} />
+                <Route path="/card/:set/:number" element={<CardDetailPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
             </Routes>
           </BrowserRouter>
         </AuthProvider>
